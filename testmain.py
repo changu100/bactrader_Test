@@ -7,9 +7,6 @@ from backtrader import strategy
 import requests
 import pandas as pd
 import backtrader as bt
-import backtrader.analyzers as btanalyzers
-import backtrader.feeds as btfeeds
-import backtrader.strategies as btstrats
 from pandas import json_normalize
 
 
@@ -171,9 +168,6 @@ and ms.strategy_code = 1;"
         for ticker , stg, setting, wgt in case:
             cerebro = bt.Cerebro()
             
-            # Analyzer
-            cerebro.addanalyzer(btanalyzers.SharpeRatio, _name='mysharpe')
-
 
             for i in range(len(stg.param)):
                 stg.param[i] = setting[i]
@@ -188,17 +182,13 @@ and ms.strategy_code = 1;"
             
 
             print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
-            #cerebro.run()
-            thestrats = cerebro.run()
+            cerebro.run()
             print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
             #cerebro.plot()
             total += cerebro.broker.getvalue()
 
 
 
-            thestrat = thestrats[0]
-
-            print('Sharpe Ratio:', thestrat.analyzers.mysharpe.get_analysis())
 
         return total
 
