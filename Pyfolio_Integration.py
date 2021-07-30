@@ -10,6 +10,8 @@ import backtrader as bt
 
 
 from DB.DB import databasepool
+import pandas as pd
+
 class St(bt.Strategy):
     params = (
         ('printout', False),
@@ -62,7 +64,7 @@ class St(bt.Strategy):
                 if self.p.printout:
                     print('BUY  {} @%{}'.format(self.p.stake, data.close[0]))
 
-def getDBData(self,ticker, start, end = None):
+def getDBData(ticker, start, end = None):
         DBClass = databasepool()
         conn = DBClass.getConn()
         if DBClass:
@@ -96,16 +98,7 @@ def runstrat(args=None):
     args = parse_args(args)
 
     cerebro = bt.Cerebro()
-    cerebro.broker.set_cash(args.cash)
-
-    dkwargs = dict()
-    if args.fromdate:
-        fromdate = datetime.datetime.strptime(args.fromdate, '%Y-%m-%d')
-        dkwargs['fromdate'] = fromdate
-
-    if args.todate:
-        todate = datetime.datetime.strptime(args.todate, '%Y-%m-%d')
-        dkwargs['todate'] = todate
+    cerebro.broker.set_cash(10000000)
 
     #data0 = bt.feeds.BacktraderCSVData(dataname=args.data0, **dkwargs)
     data0 = getDBData("005930","20190730",)
@@ -204,5 +197,4 @@ def parse_args(args=None):
 
 if __name__ == "__main__": 
     data = {'ticker': '005930', 'startTime': '20170101', 'endTime': '', 'strategyCode': '0', 'investPrice': '10000000', 'tradingStrategyCode': '0', 'tradingStrategyDetailSettingCode': '0'}
-    btTest = CBackTtrader()
-    btTest.requestBacktest(data)
+    runstrat()
