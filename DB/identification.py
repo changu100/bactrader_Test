@@ -1,0 +1,2 @@
+class ID:
+    password = "dosimpact"
