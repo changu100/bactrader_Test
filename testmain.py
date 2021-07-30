@@ -154,6 +154,10 @@ and ms.strategy_code = 1;"
                 if  row[2]== 1:
                     setting = [row[3]['GoldenCross']['pfast'],row[3]['GoldenCross']['pslow']]
                     strategyList.append(( row[1] , SMACross ,setting, 1)) 
+        ## test code
+                    setting[0] = 5
+                    setting[1] = 20
+                    strategyList.append(( "066570" , SMACross ,setting, 1)) 
 
 
         return strategyList
@@ -166,21 +170,22 @@ and ms.strategy_code = 1;"
         
         #self.__setStrategy(data["strategyCode"])
         case = (self.__setStrategy(data["strategyCode"]))
+
         caseNum = len(case)
         total = 0
 
         cerebro = bt.Cerebro()
         
-
+        for i in range(len(case[0][1].param)):
+            case[0][1].param[i] = case[0][2][i]
+        cerebro.addstrategy(case[0][1])
 
         for ticker , stg, setting, wgt in case:
             fddata = bt.feeds.PandasData(dataname = self.getDBData(ticker,data['startTime'],data['endTime']))
             cerebro.adddata(fddata,name=ticker)
 
-            for i in range(len(stg.param)):
-                stg.param[i] = setting[i]
 
-            cerebro.addstrategy(stg)
+            
 
         cerebro.addanalyzer(bt.analyzers.PyFolio, _name = 'PyFolio')
         cerebro.broker.setcash(int(data['investPrice']))
@@ -192,7 +197,7 @@ and ms.strategy_code = 1;"
         print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
         results = cerebro.run()
         print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
-
+        cerebro.plot()
         strat = results[0]
 
         portfolio_stats = strat.analyzers.getbyname('PyFolio')
