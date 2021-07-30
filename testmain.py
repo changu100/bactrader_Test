@@ -205,7 +205,7 @@ and ms.strategy_code = 1;"
 
 
 
-
-data = {'ticker': '005930', 'startTime': '20170101', 'endTime': '', 'strategyCode': '0', 'investPrice': '10000000', 'tradingStrategyCode': '0', 'tradingStrategyDetailSettingCode': '0'}
-    
-CBackTtrader.requestBacktest(data)
+if __name__ == "__main__": 
+    data = {'ticker': '005930', 'startTime': '20170101', 'endTime': '', 'strategyCode': '0', 'investPrice': '10000000', 'tradingStrategyCode': '0', 'tradingStrategyDetailSettingCode': '0'}
+    btTest = CBackTtrader()
+    btTest.requestBacktest(data)
