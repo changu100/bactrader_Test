@@ -12,57 +12,56 @@ import backtrader as bt
 from DB.DB import databasepool
 import pandas as pd
 
-class St(bt.Strategy):
-    params = (
-        ('printout', False),
-        ('stake', 1000),
-    )
 
+class SMACross(bt.Strategy):
+    param = [ 5 , 20 ]
     def __init__(self):
-        pass
+        sma1 = bt.ind.SMA(period=self.param[0]) # fast moving average 
+        sma2 = bt.ind.SMA(period=self.param[1]) # slow moving average 
+        self.crossover = bt.ind.CrossOver(sma1, sma2) # crossover signal 
+        self.holding = 0
 
-    def start(self):
-        if self.p.printout:
-            txtfields = list()
-            txtfields.append('Len')
-            txtfields.append('Datetime')
-            txtfields.append('Open')
-            txtfields.append('High')
-            txtfields.append('Low')
-            txtfields.append('Close')
-            txtfields.append('Volume')
-            txtfields.append('OpenInterest')
-            print(','.join(txtfields))
+  
+    def next(self): 
+        if not self.position: # not in the market 
+            if self.crossover > 0: # if fast crosses slow to the upside 
+                close = self.data.close[0] # 종가 값 
+                size = int(self.broker.getcash() / close)  # 최대 구매 가능 개수 
+                self.buy(size=size) # 매수 size = 구매 개수 설정 
+                
+                dt = self.datas[0].datetime.date(0)
+                print('%s' % (dt.isoformat()),"buy : ",self.data.close[0])
+        elif self.crossover < 0: # in the market & cross to the downside 
+            
+            dt = self.datas[0].datetime.date(0)
+            print('%s' % (dt.isoformat()),"sell : ",self.data.close[0])
+            self.close() # 매도
+        #print(self.data.close[0])
+    
+    def notify_order(self, order):
+        if order.status not in [order.Completed]:
+            return
+        ftest = 0
+        if order.isbuy():
+            action = 'Buy'
+            ftest=1
+        elif order.issell():
+            action = 'Sell'
+            ftest=2
+        stock_price = self.data.close[0]
+        cash = self.broker.getcash()
+        value = self.broker.getvalue()
+        self.holding += order.size
+        """
+        if ftest == 1:
+            print("buy : ",stock_price)
+        if ftest == 2:
+            print("sell : ",stock_price)
+        """
+        print('%s[%d] holding[%d] price[%d] cash[%.2f] value[%.2f]'
+              % (action, abs(order.size), self.holding, stock_price, cash, value))
 
-    def next(self):
-        if self.p.printout:
-            # Print only 1st data ... is just a check that things are running
-            txtfields = list()
-            txtfields.append('%04d' % len(self))
-            txtfields.append(self.data.datetime.datetime(0).isoformat())
-            txtfields.append('%.2f' % self.data0.open[0])
-            txtfields.append('%.2f' % self.data0.high[0])
-            txtfields.append('%.2f' % self.data0.low[0])
-            txtfields.append('%.2f' % self.data0.close[0])
-            txtfields.append('%.2f' % self.data0.volume[0])
-            txtfields.append('%.2f' % self.data0.openinterest[0])
-            print(','.join(txtfields))
 
-        # Data 0
-        for data in self.datas:
-            toss = random.randint(1, 10)
-            curpos = self.getposition(data)
-            if curpos.size:
-                if toss > 5:
-                    size = curpos.size // 2
-                    self.sell(data=data, size=size)
-                    if self.p.printout:
-                        print('SELL {} @%{}'.format(size, data.close[0]))
-
-            elif toss < 5:
-                self.buy(data=data, size=self.p.stake)
-                if self.p.printout:
-                    print('BUY  {} @%{}'.format(self.p.stake, data.close[0]))
 
 def getDBData(ticker, start, end = None):
         DBClass = databasepool()
@@ -94,6 +93,8 @@ def getDBData(ticker, start, end = None):
 
             return res
         return "error"
+
+
 def runstrat(args=None):
     args = parse_args(args)
 
@@ -101,48 +102,49 @@ def runstrat(args=None):
     cerebro.broker.set_cash(10000000)
 
     #data0 = bt.feeds.BacktraderCSVData(dataname=args.data0, **dkwargs)
-    data0 = getDBData("005930","20190730",)
-    cerebro.adddata(data0, name='Data0')
+    data0 = bt.feeds.PandasData(dataname = getDBData("005930","20190730",))
+    cerebro.adddata(data0, name='005930')
 
     #data1 = bt.feeds.BacktraderCSVData(dataname=args.data1, **dkwargs)
-    data1 = getDBData("066570","20190730",)
-    cerebro.adddata(data1, name='Data1')
+    data1 = bt.feeds.PandasData(dataname = getDBData("066570","20190730",))
+    cerebro.adddata(data1, name='066570')
 
     #data2 = bt.feeds.BacktraderCSVData(dataname=args.data2, **dkwargs)
-    data2 = getDBData("005380","20190730",)
-    cerebro.adddata(data2, name='Data2')
+    data2 = bt.feeds.PandasData(dataname = getDBData("005380","20190730",))
+    cerebro.adddata(data2, name='005380')
 
-    cerebro.addstrategy(St, printout=args.printout)
-    if not args.no_pyfolio:
-        cerebro.addanalyzer(bt.analyzers.PyFolio, _name='pyfolio')
+    cerebro.addstrategy(SMACross)
+    cerebro.addanalyzer(bt.analyzers.PyFolio, _name='pyfolio')
 
     results = cerebro.run()
-    if not args.no_pyfolio:
-        strat = results[0]
-        pyfoliozer = strat.analyzers.getbyname('pyfolio')
+    #if not args.no_pyfolio:
+    strat = results[0]
+    pyfoliozer = strat.analyzers.getbyname('pyfolio')
 
-        returns, positions, transactions, gross_lev = pyfoliozer.get_pf_items()
-        if args.printout:
-            print('-- RETURNS')
-            print(returns)
-            print('-- POSITIONS')
-            print(positions)
-            print('-- TRANSACTIONS')
-            print(transactions)
-            print('-- GROSS LEVERAGE')
-            print(gross_lev)
+    returns, positions, transactions, gross_lev = pyfoliozer.get_pf_items()
+    #if args.printout:
 
-        import pyfolio as pf
-        pf.create_full_tear_sheet(
-            returns,
-            positions=positions,
-            transactions=transactions,
-            gross_lev=gross_lev,
-            live_start_date='2005-05-01',
-            round_trips=True)
+    print("********\n"*5)
+    print('-- RETURNS')
+    print(returns)
+    print('-- POSITIONS')
+    print(positions)
+    print('-- TRANSACTIONS')
+    print(transactions)
+    print('-- GROSS LEVERAGE')
+    print(gross_lev)
 
-    if args.plot:
-        cerebro.plot(style=args.plot_style)
+    cerebro.plot(style='bar')
+    import pyfolio as pf
+    
+    pf.create_full_tear_sheet(
+        returns,
+        positions=positions,
+        transactions=transactions,
+        gross_lev=gross_lev,
+        live_start_date='2019-07-30',
+        round_trips=True)
+
 
 
 def parse_args(args=None):
