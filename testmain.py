@@ -29,7 +29,7 @@ class SMACross(bt.Strategy):
         if not self.position: # not in the market 
             if self.crossover > 0: # if fast crosses slow to the upside 
                 close = self.data.close[0] # 종가 값 
-                size = int(self.broker.getcash() / close)  # 최대 구매 가능 개수 
+                size = int(self.broker.getcash() / 4 / close)  # 최대 구매 가능 개수 
                 self.buy(size=size) # 매수 size = 구매 개수 설정 
                 
                 dt = self.datas[0].datetime.date(0)
@@ -203,9 +203,13 @@ and ms.strategy_code = 1;"
         portfolio_stats = strat.analyzers.getbyname('PyFolio')
         returns, positions, transactions, gross_lev = portfolio_stats.get_pf_items()
         returns.index = returns.index.tz_convert(None)
-        
+        print(returns)
         quantstats.reports.metrics(returns, mode='full')
+        
 
+        #리포트 출력
+        
+        quantstats.reports.html(returns, "AAPL", output='./file-name.html')
         total = cerebro.broker.getvalue()
         return total
 
